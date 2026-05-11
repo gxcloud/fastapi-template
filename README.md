@@ -36,17 +36,38 @@ uv run uvicorn app.main:app --reload
 ```
 src/
   app/
-    api/v1/endpoints/   # Route handlers
-    core/               # Config, DB, security, DI provider
-    models/             # SQLAlchemy ORM models
-    schemas/            # Pydantic request/response models
-    repositories/       # Data access layer
-    services/           # Business logic layer
-    app.py              # FastAPI app factory
-    main.py             # Entrypoint
+    common/                     # Shared infrastructure
+      base/
+        model.py                # DeclarativeBase, UUIDMixin, TimestampMixin
+        repository.py           # Generic BaseRepository[M]
+      config.py                 # Pydantic settings from env
+      database.py               # Async SQLAlchemy engine + session factory
+      di.py                     # dishka DI provider (scope-based wiring)
+      health.py                 # Health check endpoint
+      security.py               # JWT tokens, bcrypt hashing
+    domains/
+      identity/                 # Identity bounded context
+        model.py                # User ORM model
+        schemas.py              # UserCreate, UserUpdate, UserResponse
+        repository.py           # UserRepository (data access)
+        service.py              # UserService (business logic)
+        router.py               # /auth and /users endpoints
+      items/                    # Items bounded context
+        model.py                # Item ORM model
+        schemas.py              # ItemCreate, ItemUpdate, ItemResponse
+        repository.py           # ItemRepository (data access)
+        service.py              # ItemService (business logic)
+        router.py               # /items endpoints
+    app.py                      # FastAPI app factory
+    main.py                     # uvicorn entrypoint
 tests/
-alembic/                # Database migrations
-docker/                 # Dockerfiles
+  common/                       # Infrastructure tests
+  domains/
+    identity/                   # Identity domain tests
+    items/                      # Items domain tests
+  conftest.py                   # Shared fixtures
+alembic/                        # Database migrations
+docker/                         # Dockerfiles
 ```
 
 ## Makefile
@@ -63,8 +84,9 @@ docker/                 # Dockerfiles
 
 ## Architecture
 
+- **Domain-Driven** — code organized by business domain (identity, items) not technical layers
 - **App Factory** — `create_app()` enables test isolation
-- **Repository Pattern** — data access abstracted behind interfaces
-- **Service Layer** — business logic separated from HTTP
-- **DI Container** — dishka auto-wires dependencies by scope
+- **Repository Pattern** — data access abstracted behind domain-specific repositories
+- **Service Layer** — business logic lives alongside its domain, separated from HTTP
+- **DI Container** — dishka auto-wires dependencies by scope, no manual wiring
 - **Container-First** — identical dev/prod environments via Docker
