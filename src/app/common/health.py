@@ -1,7 +1,6 @@
-from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter
 
-router = APIRouter(tags=["health"], route_class=DishkaRoute)
+router = APIRouter(tags=["health"])
 
 
 @router.get("/health")

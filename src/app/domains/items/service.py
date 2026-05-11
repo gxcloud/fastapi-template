@@ -33,7 +33,7 @@ class ItemService:
             )
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(item, field, value)
-        return await self._repo.create(item)
+        return await self._repo.save(item)
 
     async def delete(self, id: UUID, owner_id: UUID) -> None:
         item = await self.get(id)

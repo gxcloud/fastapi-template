@@ -48,7 +48,7 @@ class UserService:
             user.hashed_password = hash_password(data.password)
         if data.is_active is not None:
             user.is_active = data.is_active
-        return await self._repo.create(user)
+        return await self._repo.save(user)
 
     async def authenticate(self, email: str, password: str) -> User:
         user = await self._repo.get_by_email(email)
