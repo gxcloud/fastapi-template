@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
@@ -6,12 +7,19 @@ from jose import JWTError, jwt  # type: ignore[import-untyped]
 from app.common.config import settings
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+def generate_salt() -> str:
+    return secrets.token_hex(16)
 
 
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+def hash_password(password: str, salt: str) -> str:
+    return bcrypt.hashpw(
+        (salt + password).encode(),
+        bcrypt.gensalt(),
+    ).decode()
+
+
+def verify_password(password: str, hashed: str, salt: str) -> bool:
+    return bcrypt.checkpw((salt + password).encode(), hashed.encode())
 
 
 def create_access_token(subject: str) -> str:

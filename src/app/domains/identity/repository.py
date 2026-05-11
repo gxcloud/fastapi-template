@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from sqlalchemy import select
 
 from app.common.base.repository import BaseRepository
@@ -14,7 +12,10 @@ class UserRepository(BaseRepository[User]):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_by_ids(self, ids: list[UUID]) -> list[User]:
-        stmt = select(User).where(User.id.in_(ids))
+    async def get_by_oidc(self, provider: str, sub: str) -> User | None:
+        stmt = select(User).where(
+            User.oidc_provider == provider,
+            User.oidc_sub == sub,
+        )
         result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return result.scalar_one_or_none()

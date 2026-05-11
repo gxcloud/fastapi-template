@@ -1,17 +1,23 @@
 from uuid import UUID
 
-from app.common.security import hash_password
+from app.common.security import generate_salt, hash_password
 from app.domains.identity.model import User
 from app.domains.identity.repository import UserRepository
 from app.domains.items.model import Item
 from app.domains.items.repository import ItemRepository
 
 
+def _hashed(pw: str) -> tuple[str, str]:
+    salt = generate_salt()
+    return hash_password(pw, salt), salt
+
+
 async def test_create_item(
     item_repo: ItemRepository,
     user_repo: UserRepository,
 ) -> None:
-    user = User(email="owner@example.com", hashed_password=hash_password("pass"))
+    h, s = _hashed("pass")
+    user = User(email="owner@example.com", hashed_password=h, password_salt=s)
     owner = await user_repo.create(user)
     item = Item(title="Test Item", owner_id=owner.id)
     created = await item_repo.create(item)
@@ -24,8 +30,9 @@ async def test_get_item(
     item_repo: ItemRepository,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="get@example.com", hashed_password=hash_password("pass")),
+        User(email="get@example.com", hashed_password=h, password_salt=s),
     )
     item = await item_repo.create(Item(title="Get Test", owner_id=owner.id))
     found = await item_repo.get(item.id)
@@ -42,8 +49,9 @@ async def test_list_by_owner(
     item_repo: ItemRepository,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="list@example.com", hashed_password=hash_password("pass")),
+        User(email="list@example.com", hashed_password=h, password_salt=s),
     )
     for i in range(3):
         await item_repo.create(
@@ -58,8 +66,9 @@ async def test_list_public(
     item_repo: ItemRepository,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="public@example.com", hashed_password=hash_password("pass")),
+        User(email="public@example.com", hashed_password=h, password_salt=s),
     )
     await item_repo.create(Item(title="Public", owner_id=owner.id, is_public=True))
     items = await item_repo.list_public()

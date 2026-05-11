@@ -3,19 +3,25 @@ from uuid import UUID
 import pytest
 from fastapi import HTTPException
 
-from app.common.security import hash_password
+from app.common.security import generate_salt, hash_password
 from app.domains.identity.model import User
 from app.domains.identity.repository import UserRepository
 from app.domains.items.schemas import ItemCreate, ItemUpdate
 from app.domains.items.service import ItemService
 
 
+def _hashed(pw: str) -> tuple[str, str]:
+    salt = generate_salt()
+    return hash_password(pw, salt), salt
+
+
 async def test_create_item(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="owner@example.com", hashed_password=hash_password("pass")),
+        User(email="owner@example.com", hashed_password=h, password_salt=s),
     )
     item = await item_service.create(
         ItemCreate(title="Test Item"),
@@ -29,8 +35,9 @@ async def test_get_item(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="get@example.com", hashed_password=hash_password("pass")),
+        User(email="get@example.com", hashed_password=h, password_salt=s),
     )
     created = await item_service.create(
         ItemCreate(title="Get Test"),
@@ -50,8 +57,9 @@ async def test_update_item(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="upd@example.com", hashed_password=hash_password("pass")),
+        User(email="upd@example.com", hashed_password=h, password_salt=s),
     )
     created = await item_service.create(
         ItemCreate(title="Original"),
@@ -69,11 +77,12 @@ async def test_update_item_wrong_owner(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="right@example.com", hashed_password=hash_password("pass")),
+        User(email="right@example.com", hashed_password=h, password_salt=s),
     )
     intruder = await user_repo.create(
-        User(email="wrong@example.com", hashed_password=hash_password("pass")),
+        User(email="wrong@example.com", hashed_password=h, password_salt=s),
     )
     created = await item_service.create(
         ItemCreate(title="Mine"),
@@ -92,8 +101,9 @@ async def test_delete_item(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="del@example.com", hashed_password=hash_password("pass")),
+        User(email="del@example.com", hashed_password=h, password_salt=s),
     )
     created = await item_service.create(
         ItemCreate(title="To Delete"),
@@ -109,11 +119,12 @@ async def test_delete_item_wrong_owner(
     item_service: ItemService,
     user_repo: UserRepository,
 ) -> None:
+    h, s = _hashed("pass")
     owner = await user_repo.create(
-        User(email="right2@example.com", hashed_password=hash_password("pass")),
+        User(email="right2@example.com", hashed_password=h, password_salt=s),
     )
     intruder = await user_repo.create(
-        User(email="wrong2@example.com", hashed_password=hash_password("pass")),
+        User(email="wrong2@example.com", hashed_password=h, password_salt=s),
     )
     created = await item_service.create(
         ItemCreate(title="Mine"),

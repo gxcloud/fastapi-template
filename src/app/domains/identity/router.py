@@ -7,7 +7,12 @@ from fastapi import APIRouter
 from app.common.security import create_access_token
 from app.domains.identity.model import User
 from app.domains.identity.repository import UserRepository
-from app.domains.identity.schemas import UserCreate, UserResponse, UserUpdate
+from app.domains.identity.schemas import (
+    UserCreate,
+    UserOIDCLogin,
+    UserResponse,
+    UserUpdate,
+)
 from app.domains.identity.service import UserService
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"], route_class=DishkaRoute)
@@ -27,6 +32,14 @@ async def login(
     user = await svc.authenticate(data.email, data.password)
     token = create_access_token(str(user.id))
     return {"access_token": token, "token_type": "bearer"}
+
+
+@auth_router.post("/oidc", response_model=UserResponse)
+async def oidc_login(
+    data: UserOIDCLogin,
+    svc: FromDishka[UserService],
+) -> User:
+    return await svc.authenticate_oidc(data)
 
 
 @user_router.get("", response_model=list[UserResponse])

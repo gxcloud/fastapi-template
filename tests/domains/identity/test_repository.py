@@ -1,12 +1,18 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.security import hash_password
+from app.common.security import generate_salt, hash_password
 from app.domains.identity.model import User
 from app.domains.identity.repository import UserRepository
 
 
+def _hashed(pw: str) -> tuple[str, str]:
+    salt = generate_salt()
+    return hash_password(pw, salt), salt
+
+
 async def test_create_user(user_repo: UserRepository) -> None:
-    user = User(email="test@example.com", hashed_password=hash_password("pass"))
+    h, s = _hashed("pass")
+    user = User(email="test@example.com", hashed_password=h, password_salt=s)
     created = await user_repo.create(user)
     assert created.id is not None
     assert created.email == "test@example.com"
@@ -16,7 +22,8 @@ async def test_get_by_email(
     user_repo: UserRepository,
     session: AsyncSession,
 ) -> None:
-    user = User(email="find@example.com", hashed_password=hash_password("pass"))
+    h, s = _hashed("pass")
+    user = User(email="find@example.com", hashed_password=h, password_salt=s)
     session.add(user)
     await session.flush()
 
@@ -35,8 +42,9 @@ async def test_list_users(
     session: AsyncSession,
 ) -> None:
     for i in range(3):
+        h, s = _hashed("pass")
         session.add(
-            User(email=f"user{i}@example.com", hashed_password=hash_password("pass")),
+            User(email=f"user{i}@example.com", hashed_password=h, password_salt=s),
         )
     await session.flush()
 
