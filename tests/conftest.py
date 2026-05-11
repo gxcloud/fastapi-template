@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import (
 )
 from testcontainers.postgres import PostgresContainer
 
+from app.common.security import create_access_token
+from app.domains.identity.model import User
+from app.domains.identity.schemas import UserCreate
+
 
 @pytest_asyncio.fixture
 async def postgres():
@@ -21,7 +25,7 @@ async def db_url(postgres) -> str:
     return postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(autouse=True)
 async def engine(db_url):
     from app.common.base.model import Base
 
@@ -43,7 +47,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(db_url, engine) -> AsyncGenerator[AsyncClient, None]:  # noqa: ARG001
+async def client(db_url) -> AsyncGenerator[AsyncClient, None]:
     from app.app import create_app
 
     app = create_app(db_url=db_url)
@@ -83,18 +87,18 @@ async def item_service(item_repo):
 
 
 @pytest_asyncio.fixture
-async def auth_token(client) -> str:
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={"email": "test@example.com", "password": "password123"},
+async def registered_user(user_service, session: AsyncSession) -> tuple[User, str]:
+    user = await user_service.create(
+        UserCreate(email="test@example.com", password="password123"),
     )
-    assert response.status_code == 201
-    response = await client.post(
-        "/api/v1/auth/login",
-        json={"email": "test@example.com", "password": "password123"},
-    )
-    data = response.json()
-    return data["access_token"]
+    await session.commit()
+    token = create_access_token(str(user.id))
+    return user, token
+
+
+@pytest_asyncio.fixture
+async def auth_token(registered_user) -> str:
+    return registered_user[1]
 
 
 @pytest_asyncio.fixture

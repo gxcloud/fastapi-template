@@ -1,8 +1,6 @@
-import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_create_item(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -20,7 +18,6 @@ async def test_create_item(
     assert "owner_id" in data
 
 
-@pytest.mark.asyncio
 async def test_create_item_unauthorized(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/items",
@@ -29,7 +26,6 @@ async def test_create_item_unauthorized(client: AsyncClient) -> None:
     assert response.status_code == 401
 
 
-@pytest.mark.asyncio
 async def test_list_public_items(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -43,9 +39,9 @@ async def test_list_public_items(
     assert response.status_code == 200
     data = response.json()
     assert len(data) >= 1
+    assert all(item["is_public"] for item in data)
 
 
-@pytest.mark.asyncio
 async def test_list_my_items(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -62,7 +58,11 @@ async def test_list_my_items(
     assert data[0]["title"] == "My Item"
 
 
-@pytest.mark.asyncio
+async def test_list_my_items_unauthorized(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/items/mine")
+    assert response.status_code == 401
+
+
 async def test_get_item(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -79,7 +79,17 @@ async def test_get_item(
     assert response.json()["title"] == "Get Test Item"
 
 
-@pytest.mark.asyncio
+async def test_get_item_not_found(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.get(
+        "/api/v1/items/00000000-0000-0000-0000-000000000000",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
 async def test_update_item(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -100,7 +110,18 @@ async def test_update_item(
     assert response.json()["title"] == "Updated"
 
 
-@pytest.mark.asyncio
+async def test_update_item_not_found(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.patch(
+        "/api/v1/items/00000000-0000-0000-0000-000000000000",
+        json={"title": "Nope"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 404
+
+
 async def test_delete_item(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -117,3 +138,14 @@ async def test_delete_item(
         headers=auth_headers,
     )
     assert response.status_code == 204
+
+
+async def test_delete_item_not_found(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.delete(
+        "/api/v1/items/00000000-0000-0000-0000-000000000000",
+        headers=auth_headers,
+    )
+    assert response.status_code == 404

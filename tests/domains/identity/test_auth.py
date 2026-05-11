@@ -1,8 +1,6 @@
-import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
 async def test_register(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/register",
@@ -15,7 +13,6 @@ async def test_register(client: AsyncClient) -> None:
     assert "id" in data
 
 
-@pytest.mark.asyncio
 async def test_register_duplicate_email(client: AsyncClient) -> None:
     await client.post(
         "/api/v1/auth/register",
@@ -28,7 +25,6 @@ async def test_register_duplicate_email(client: AsyncClient) -> None:
     assert response.status_code == 409
 
 
-@pytest.mark.asyncio
 async def test_login(client: AsyncClient) -> None:
     await client.post(
         "/api/v1/auth/register",
@@ -44,10 +40,9 @@ async def test_login(client: AsyncClient) -> None:
     assert data["token_type"] == "bearer"
 
 
-@pytest.mark.asyncio
 async def test_login_invalid_credentials(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "nonexistent@example.com", "password": "wrong"},
+        json={"email": "nonexistent@example.com", "password": "wrongpass"},
     )
     assert response.status_code == 401
