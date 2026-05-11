@@ -149,3 +149,55 @@ async def test_delete_item_not_found(
         headers=auth_headers,
     )
     assert response.status_code == 404
+
+
+async def _second_user_headers(client: AsyncClient) -> dict[str, str]:
+    await client.post(
+        "/api/v1/auth/register",
+        json={"email": "other@example.com", "password": "password123"},
+    )
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "other@example.com", "password": "password123"},
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def test_update_item_wrong_owner(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    created = await client.post(
+        "/api/v1/items",
+        json={"title": "Mine"},
+        headers=auth_headers,
+    )
+    item_id = created.json()["id"]
+    other = await _second_user_headers(client)
+
+    response = await client.patch(
+        f"/api/v1/items/{item_id}",
+        json={"title": "Hacked"},
+        headers=other,
+    )
+    assert response.status_code == 403
+
+
+async def test_delete_item_wrong_owner(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    created = await client.post(
+        "/api/v1/items",
+        json={"title": "Mine Too"},
+        headers=auth_headers,
+    )
+    item_id = created.json()["id"]
+    other = await _second_user_headers(client)
+
+    response = await client.delete(
+        f"/api/v1/items/{item_id}",
+        headers=other,
+    )
+    assert response.status_code == 403

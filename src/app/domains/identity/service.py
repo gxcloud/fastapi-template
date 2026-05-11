@@ -35,6 +35,7 @@ class UserService:
                 oidc_provider=data.oidc_provider,
             )
         else:
+            assert data.password is not None
             salt = generate_salt()
             user = User(
                 email=data.email,

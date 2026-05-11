@@ -129,3 +129,43 @@ async def test_authenticate_oidc_existing_user(user_service: UserService) -> Non
     )
     assert second.id == first.id
     assert second.email == "first@example.com"
+
+
+async def test_update_user_password(user_service: UserService) -> None:
+    created = await user_service.create(
+        UserCreate(email="passupd@example.com", password="password123"),
+    )
+    await user_service.update(
+        created.id,
+        UserUpdate(password="newpassword456"),
+    )
+    user = await user_service.authenticate("passupd@example.com", "newpassword456")
+    assert user.email == "passupd@example.com"
+
+
+async def test_update_user_is_active(user_service: UserService) -> None:
+    created = await user_service.create(
+        UserCreate(email="active@example.com", password="password123"),
+    )
+    updated = await user_service.update(
+        created.id,
+        UserUpdate(is_active=False),
+    )
+    assert updated.is_active is False
+
+
+async def test_authenticate_oidc_duplicate_email(user_service: UserService) -> None:
+    from app.domains.identity.schemas import UserOIDCLogin
+
+    await user_service.create(
+        UserCreate(email="existing@example.com", password="password123"),
+    )
+    with pytest.raises(HTTPException) as exc:
+        await user_service.authenticate_oidc(
+            UserOIDCLogin(
+                provider="google",
+                sub="new-sub",
+                email="existing@example.com",
+            ),
+        )
+    assert exc.value.status_code == 409

@@ -27,6 +27,22 @@ async def test_register_duplicate_email(client: AsyncClient) -> None:
     assert response.status_code == 409
 
 
+async def test_register_invalid_email(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "not-an-email", "password": "password123"},
+    )
+    assert response.status_code == 422
+
+
+async def test_register_short_password(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "short@example.com", "password": "1234567"},
+    )
+    assert response.status_code == 422
+
+
 async def test_register_no_password(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/register",
@@ -85,6 +101,18 @@ async def test_oidc_login_new_user(client: AsyncClient) -> None:
     assert data["email"] == "oidc-new@example.com"
     assert data["oidc_sub"] == "google-123"
     assert data["oidc_provider"] == "google"
+
+
+async def test_login_with_oidc_user(client: AsyncClient) -> None:
+    await client.post(
+        "/api/v1/auth/oidc",
+        json={"provider": "google", "sub": "oidc-only", "email": "oidconly@example.com"},
+    )
+    response = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "oidconly@example.com", "password": "anypassword"},
+    )
+    assert response.status_code == 401
 
 
 async def test_oidc_login_existing_user(client: AsyncClient) -> None:

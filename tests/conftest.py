@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
@@ -16,12 +17,19 @@ from app.domains.identity.schemas import UserCreate
 
 @pytest_asyncio.fixture
 async def postgres():
-    with PostgresContainer("postgres:16-alpine") as pg:
-        yield pg
+    db_url = os.environ.get("DB_URL")
+    if db_url:
+        yield None
+    else:
+        with PostgresContainer("postgres:16-alpine") as pg:
+            yield pg
 
 
 @pytest_asyncio.fixture
 async def db_url(postgres) -> str:
+    db_url = os.environ.get("DB_URL")
+    if db_url:
+        return db_url
     return postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 

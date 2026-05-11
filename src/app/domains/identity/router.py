@@ -29,6 +29,10 @@ async def login(
     data: UserCreate,
     svc: FromDishka[UserService],
 ) -> dict[str, str]:
+    if not data.password:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=422, detail="Password required")
     user = await svc.authenticate(data.email, data.password)
     token = create_access_token(str(user.id))
     return {"access_token": token, "token_type": "bearer"}
@@ -44,6 +48,7 @@ async def oidc_login(
 
 @user_router.get("", response_model=list[UserResponse])
 async def list_users(
+    _current_user: FromDishka[User],
     repo: FromDishka[UserRepository],
     skip: int = 0,
     limit: int = 100,
@@ -68,6 +73,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     data: UserUpdate,
+    _current_user: FromDishka[User],
     svc: FromDishka[UserService],
 ) -> User:
     return await svc.update(user_id, data)
