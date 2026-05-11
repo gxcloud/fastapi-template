@@ -129,4 +129,3 @@ async def test_authenticate_oidc_existing_user(user_service: UserService) -> Non
     )
     assert second.id == first.id
     assert second.email == "first@example.com"
-

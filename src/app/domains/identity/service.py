@@ -21,7 +21,8 @@ class UserService:
             )
         if data.oidc_sub and data.oidc_provider:
             existing_oidc = await self._repo.get_by_oidc(
-                data.oidc_provider, data.oidc_sub,
+                data.oidc_provider,
+                data.oidc_sub,
             )
             if existing_oidc:
                 raise HTTPException(
