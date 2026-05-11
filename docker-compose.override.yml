@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DB_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/app
+      - SECRET_KEY=dev-secret-key-not-for-production
+    ports:
+      - "8000:8000"
+
+  postgres:
+    ports:
+      - "5432:5432"
