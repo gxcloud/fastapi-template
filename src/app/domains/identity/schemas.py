@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class UserCreate(BaseModel):
@@ -8,6 +8,19 @@ class UserCreate(BaseModel):
     password: str | None = Field(default=None, min_length=8)
     oidc_sub: str | None = None
     oidc_provider: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        return v
 
     @model_validator(mode="after")
     def check_auth_method(self) -> "UserCreate":

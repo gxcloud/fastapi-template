@@ -4,7 +4,7 @@ from httpx import AsyncClient
 async def test_register(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/register",
-        json={"email": "new@example.com", "password": "password123"},
+        json={"email": "new@example.com", "password": "Password123"},
     )
     assert response.status_code == 201
     data = response.json()
@@ -18,11 +18,11 @@ async def test_register(client: AsyncClient) -> None:
 async def test_register_duplicate_email(client: AsyncClient) -> None:
     await client.post(
         "/api/v1/auth/register",
-        json={"email": "dup@example.com", "password": "password123"},
+        json={"email": "dup@example.com", "password": "Password123"},
     )
     response = await client.post(
         "/api/v1/auth/register",
-        json={"email": "dup@example.com", "password": "password123"},
+        json={"email": "dup@example.com", "password": "Password123"},
     )
     assert response.status_code == 409
 
@@ -30,7 +30,7 @@ async def test_register_duplicate_email(client: AsyncClient) -> None:
 async def test_register_invalid_email(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/register",
-        json={"email": "not-an-email", "password": "password123"},
+        json={"email": "not-an-email", "password": "Password123"},
     )
     assert response.status_code == 422
 
@@ -56,7 +56,7 @@ async def test_register_both_password_and_oidc(client: AsyncClient) -> None:
         "/api/v1/auth/register",
         json={
             "email": "both@example.com",
-            "password": "password123",
+            "password": "Password123",
             "oidc_sub": "abc123",
             "oidc_provider": "google",
         },
@@ -67,11 +67,11 @@ async def test_register_both_password_and_oidc(client: AsyncClient) -> None:
 async def test_login(client: AsyncClient) -> None:
     await client.post(
         "/api/v1/auth/register",
-        json={"email": "login@example.com", "password": "password123"},
+        json={"email": "login@example.com", "password": "Password123"},
     )
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "login@example.com", "password": "password123"},
+        json={"email": "login@example.com", "password": "Password123"},
     )
     assert response.status_code == 200
     data = response.json()
@@ -82,7 +82,7 @@ async def test_login(client: AsyncClient) -> None:
 async def test_login_invalid_credentials(client: AsyncClient) -> None:
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "nonexistent@example.com", "password": "wrongpass"},
+        json={"email": "nonexistent@example.com", "password": "Wrongpass1"},
     )
     assert response.status_code == 401
 
@@ -110,7 +110,7 @@ async def test_login_with_oidc_user(client: AsyncClient) -> None:
     )
     response = await client.post(
         "/api/v1/auth/login",
-        json={"email": "oidconly@example.com", "password": "anypassword"},
+        json={"email": "oidconly@example.com", "password": "AnyPass1"},
     )
     assert response.status_code == 401
 
