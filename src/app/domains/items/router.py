@@ -11,7 +11,9 @@ from app.domains.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.domains.items.service import ItemService
 
 router = APIRouter(
-    prefix="/items", tags=["items"], route_class=DishkaRoute,
+    prefix="/items",
+    tags=["items"],
+    route_class=DishkaRoute,
 )
 
 

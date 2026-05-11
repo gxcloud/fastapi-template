@@ -43,7 +43,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(db_url, engine) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_url, engine) -> AsyncGenerator[AsyncClient, None]:  # noqa: ARG001
     from app.app import create_app
 
     app = create_app(db_url=db_url)
