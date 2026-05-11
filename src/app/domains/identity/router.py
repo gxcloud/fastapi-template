@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from dishka import FromDishka
+from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter
 
 from app.common.security import create_access_token
@@ -9,8 +10,8 @@ from app.domains.identity.repository import UserRepository
 from app.domains.identity.schemas import UserCreate, UserResponse, UserUpdate
 from app.domains.identity.service import UserService
 
-auth_router = APIRouter(prefix="/auth", tags=["auth"])
-user_router = APIRouter(prefix="/users", tags=["users"])
+auth_router = APIRouter(prefix="/auth", tags=["auth"], route_class=DishkaRoute)
+user_router = APIRouter(prefix="/users", tags=["users"], route_class=DishkaRoute)
 
 
 @auth_router.post("/register", response_model=UserResponse, status_code=201)

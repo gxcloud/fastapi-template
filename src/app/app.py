@@ -8,10 +8,10 @@ from app.domains.identity.router import auth_router, user_router
 from app.domains.items.router import router as items_router
 
 
-def create_app() -> FastAPI:
+def create_app(db_url: str | None = None) -> FastAPI:
     app = FastAPI(title="app", version="0.1.0")
 
-    container = make_async_container(AppProvider())
+    container = make_async_container(AppProvider(db_url=db_url))
     setup_dishka(container, app)
 
     v1_router = APIRouter(prefix="/v1")

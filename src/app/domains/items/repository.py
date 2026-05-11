@@ -16,12 +16,7 @@ class ItemRepository(BaseRepository[Item]):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Item]:
-        stmt = (
-            select(Item)
-            .where(Item.owner_id == owner_id)
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(Item).where(Item.owner_id == owner_id).offset(skip).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
@@ -31,11 +26,6 @@ class ItemRepository(BaseRepository[Item]):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Item]:
-        stmt = (
-            select(Item)
-            .where(Item.is_public.is_(True))
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = select(Item).where(Item.is_public.is_(True)).offset(skip).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

@@ -9,27 +9,22 @@ from sqlalchemy.ext.asyncio import (
 )
 from testcontainers.postgres import PostgresContainer
 
-from app.app import create_app
-from app.common.base.model import Base
-from app.domains.identity.repository import UserRepository
-from app.domains.identity.service import UserService
-from app.domains.items.repository import ItemRepository
-from app.domains.items.service import ItemService
 
-
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def postgres():
     with PostgresContainer("postgres:16-alpine") as pg:
         yield pg
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def db_url(postgres) -> str:
     return postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def engine(db_url):
+    from app.common.base.model import Base
+
     engine = create_async_engine(db_url)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -48,45 +43,47 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def client(db_url) -> AsyncGenerator[AsyncClient, None]:
-    import os
+async def client(db_url, engine) -> AsyncGenerator[AsyncClient, None]:
+    from app.app import create_app
 
-    os.environ["DB_URL"] = db_url
-    os.environ["SECRET_KEY"] = "test-secret-key"
-
-    app = create_app()
+    app = create_app(db_url=db_url)
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as ac:
         yield ac
 
-    os.environ.pop("DB_URL", None)
-    os.environ.pop("SECRET_KEY", None)
-
 
 @pytest_asyncio.fixture
-async def user_repo(session: AsyncSession) -> UserRepository:
+async def user_repo(session: AsyncSession):
+    from app.domains.identity.repository import UserRepository
+
     return UserRepository(session=session)
 
 
 @pytest_asyncio.fixture
-async def item_repo(session: AsyncSession) -> ItemRepository:
+async def item_repo(session: AsyncSession):
+    from app.domains.items.repository import ItemRepository
+
     return ItemRepository(session=session)
 
 
 @pytest_asyncio.fixture
-async def user_service(user_repo: UserRepository) -> UserService:
+async def user_service(user_repo):
+    from app.domains.identity.service import UserService
+
     return UserService(repo=user_repo)
 
 
 @pytest_asyncio.fixture
-async def item_service(item_repo: ItemRepository) -> ItemService:
+async def item_service(item_repo):
+    from app.domains.items.service import ItemService
+
     return ItemService(repo=item_repo)
 
 
 @pytest_asyncio.fixture
-async def auth_token(client: AsyncClient) -> str:
+async def auth_token(client) -> str:
     response = await client.post(
         "/api/v1/auth/register",
         json={"email": "test@example.com", "password": "password123"},

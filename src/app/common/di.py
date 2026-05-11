@@ -3,10 +3,14 @@ from uuid import UUID
 
 from dishka import Provider, Scope, from_context, provide
 from fastapi import HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.common.config import Settings, settings
-from app.common.database import async_session_factory
+from app.common.database import get_session_factory
 from app.common.security import decode_access_token
 from app.domains.identity.model import User
 from app.domains.identity.repository import UserRepository
@@ -18,13 +22,22 @@ from app.domains.items.service import ItemService
 class AppProvider(Provider):
     request = from_context(Request, scope=Scope.REQUEST)
 
+    def __init__(self, db_url: str | None = None) -> None:
+        super().__init__()
+        self._db_url = db_url
+
     @provide(scope=Scope.APP)
     def get_settings(self) -> Settings:
         return settings
 
     @provide(scope=Scope.REQUEST, provides=AsyncSession)
     async def get_session(self) -> AsyncIterable[AsyncSession]:
-        async with async_session_factory() as session:
+        if self._db_url:
+            engine = create_async_engine(self._db_url)
+            factory = async_sessionmaker(engine, expire_on_commit=False)
+        else:
+            factory = get_session_factory()
+        async with factory() as session:
             yield session
             await session.commit()
 

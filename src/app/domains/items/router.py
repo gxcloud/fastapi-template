@@ -1,15 +1,18 @@
 from uuid import UUID
 
 from dishka import FromDishka
+from dishka.integrations.fastapi import DishkaRoute
 from fastapi import APIRouter
 
+from app.domains.identity.model import User
 from app.domains.items.model import Item
 from app.domains.items.repository import ItemRepository
 from app.domains.items.schemas import ItemCreate, ItemResponse, ItemUpdate
 from app.domains.items.service import ItemService
-from app.domains.identity.model import User
 
-router = APIRouter(prefix="/items", tags=["items"])
+router = APIRouter(
+    prefix="/items", tags=["items"], route_class=DishkaRoute,
+)
 
 
 @router.post("", response_model=ItemResponse, status_code=201)

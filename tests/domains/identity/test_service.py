@@ -1,12 +1,11 @@
 import pytest
 from fastapi import HTTPException
 
-from app.domains.identity.schemas import UserCreate
-from app.domains.identity.service import UserService
-
 
 @pytest.mark.asyncio
-async def test_create_user(user_service: UserService) -> None:
+async def test_create_user(user_service) -> None:
+    from app.domains.identity.schemas import UserCreate
+
     user = await user_service.create(
         UserCreate(email="new@example.com", password="password123"),
     )
@@ -15,7 +14,9 @@ async def test_create_user(user_service: UserService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_duplicate_email(user_service: UserService) -> None:
+async def test_create_duplicate_email(user_service) -> None:
+    from app.domains.identity.schemas import UserCreate
+
     await user_service.create(
         UserCreate(email="dup@example.com", password="password123"),
     )
@@ -27,7 +28,9 @@ async def test_create_duplicate_email(user_service: UserService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_authenticate(user_service: UserService) -> None:
+async def test_authenticate(user_service) -> None:
+    from app.domains.identity.schemas import UserCreate
+
     await user_service.create(
         UserCreate(email="auth@example.com", password="password123"),
     )
@@ -36,7 +39,9 @@ async def test_authenticate(user_service: UserService) -> None:
 
 
 @pytest.mark.asyncio
-async def test_authenticate_wrong_password(user_service: UserService) -> None:
+async def test_authenticate_wrong_password(user_service) -> None:
+    from app.domains.identity.schemas import UserCreate
+
     await user_service.create(
         UserCreate(email="wrong@example.com", password="password123"),
     )
