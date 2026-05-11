@@ -86,8 +86,11 @@ uv sync --extra dev               # Install including dev deps
 # Development
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Testing (requires Docker for testcontainers)
-uv run pytest tests/ -v           # Run all tests (45 tests)
+# CI (GitHub Actions automates this on push/PR)
+# See .github/workflows/ci.yml
+
+# Testing (requires Docker for testcontainers, or set DB_URL env var)
+uv run pytest tests/ -v           # Run all tests (79 tests)
 uv run pytest tests/ -v --cov=src/  # With coverage
 
 # Code quality
@@ -151,7 +154,7 @@ make docker-up        # docker compose up --build
 
 ## Testing Notes
 
-- All 52 tests require Docker (testcontainers starts a real PostgreSQL container).
+- All 79 tests require Docker. Locally, testcontainers auto-starts Postgres. In CI, a Postgres service container is used — set `DB_URL` and `SECRET_KEY` env vars to skip testcontainers.
 - New domains need three test files: `test_api.py`, `test_repository.py`, `test_service.py`.
 - `asyncio_mode = "auto"` in pytest config — do NOT add `@pytest.mark.asyncio` on test functions.
 - The `engine` fixture is `autouse=True` — tables create/drop automatically for every test.
