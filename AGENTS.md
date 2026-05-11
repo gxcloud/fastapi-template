@@ -32,8 +32,8 @@ src/app/
 │   └── security.py             # JWT create/decode, bcrypt hash/verify
 ├── domains/
 │   ├── identity/               # Bounded context: identity
-│   │   ├── model.py            # User (id, email, hashed_password, is_active, is_superuser)
-│   │   ├── schemas.py          # UserCreate, UserUpdate, UserResponse
+│   │   ├── model.py            # User (id, email, hashed_password, password_salt, oidc_sub, oidc_provider, is_active, is_superuser)
+│   │   ├── schemas.py          # UserCreate, UserUpdate, UserOIDCLogin, UserResponse
 │   │   ├── repository.py       # UserRepository (find_by_email, list_by_ids)
 │   │   ├── service.py          # UserService (register, authenticate, profile CRUD)
 │   │   └── router.py           # auth_router (/auth) + user_router (/users)
@@ -70,7 +70,7 @@ tests/
 
 4. **dishka DI Container** — no manual dependency wiring. Define providers in `common/di.py` with scopes (`APP` for singletons, `REQUEST` for per-request). Endpoints use `FromDishka[T]` to inject dependencies. Routes must use `DishkaRoute` to enable `FromDishka` resolution.
 
-5. **Security** — JWT tokens via python-jose. Password hashing via bcrypt (NOT passlib, which is incompatible with bcrypt 5.0). CORS middleware configured from settings. Active user check in `get_current_user` dependency. Item ownership enforced on update/delete.
+5. **Security** — JWT tokens via python-jose. Password hashing via bcrypt with explicit per-user salt (NOT passlib). CORS middleware configured from settings. Active user check in `get_current_user` dependency. Item ownership enforced on update/delete. OIDC support for password-less authentication via `/auth/oidc` endpoint.
 
 6. **Async Everything** — SQLAlchemy async engine/sessions, asyncpg driver, async endpoints, async Alembic migrations, async tests.
 
@@ -120,8 +120,12 @@ make docker-up        # docker compose up --build
 - **Async**: all database operations use `async`/`await`. Synchronous helpers (hash_password, JWT) are fine as pure functions.
 - **Return types on endpoints**: always annotate the return type of endpoint functions (e.g., `-> User`, `-> list[Item]`, `-> dict[str, str]`).
 - **Error handling**: services raise `HTTPException` with appropriate status codes. Never let SQLAlchemy exceptions bubble up to the API layer.
+- **Password salting**: Each user gets a unique `password_salt` via `secrets.token_hex(16)`. The salt is prepended to the password before bcrypt hashing. OIDC users have no password or salt.
+- **OIDC**: Users can authenticate via OpenID Connect. The `/auth/oidc` endpoint accepts a provider, sub, and email. If the user exists, return them; otherwise create a new user (just-in-time provisioning).
 - **Models**: use SQLAlchemy 2.0 style (`Mapped`, `mapped_column`). All tables have UUID primary keys and timestamp columns via mixins.
 - **Schemas**: use Pydantic v2 style with `model_config = {"from_attributes": True}` for ORM mode. Validate passwords with `Field(min_length=8)`.
+- **Password salting**: Each user gets a unique `password_salt` via `secrets.token_hex(16)`. The salt is prepended to the password before bcrypt hashing. OIDC users have no password or salt.
+- **OIDC**: Users can authenticate via OpenID Connect. The `/auth/oidc` endpoint accepts a provider, sub, and email. If the user exists, return them; otherwise create a new user (just-in-time provisioning).
 
 ## Dependencies
 
@@ -147,7 +151,8 @@ make docker-up        # docker compose up --build
 
 ## Testing Notes
 
-- All 45 tests require Docker (testcontainers starts a real PostgreSQL container).
+- All 52 tests require Docker (testcontainers starts a real PostgreSQL container).
+- New domains need three test files: `test_api.py`, `test_repository.py`, `test_service.py`.
 - `asyncio_mode = "auto"` in pytest config — do NOT add `@pytest.mark.asyncio` on test functions.
 - The `engine` fixture is `autouse=True` — tables create/drop automatically for every test.
 - The `client` fixture creates a fresh FastAPI app with a test-specific DB URL via `create_app(db_url=...)`.

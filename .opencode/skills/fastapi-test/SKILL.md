@@ -28,6 +28,15 @@ tests/
 2. **Module-level imports are safe** — `create_app()` accepts `db_url` override, so the global `settings` singleton doesn't matter.
 3. **Always commit data fixtures** — if a fixture creates data for the API client, call `await session.commit()` so the app's session can see it.
 4. **New domains need three test files** — API (httpx), repository (SQL), service (business logic).
+5. **Password salting in tests** — `hash_password()` now requires a salt. Use the `_hashed(pw)` helper pattern:
+   ```python
+   from app.common.security import generate_salt, hash_password
+   def _hashed(pw: str) -> tuple[str, str]:
+       salt = generate_salt()
+       return hash_password(pw, salt), salt
+   h, s = _hashed("pass")
+   user = User(email="test@example.com", hashed_password=h, password_salt=s)
+   ```
 
 ## Available Fixtures (from conftest.py)
 
