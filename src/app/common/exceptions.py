@@ -8,7 +8,7 @@ class ErrorResponse:
     def create(
         detail: str,
         status_code: int,
-        errors: list[dict] | None = None,
+        errors: list[dict[str, str]] | None = None,
     ) -> JSONResponse:
         body: dict[str, object] = {"detail": detail, "status_code": status_code}
         if errors:
