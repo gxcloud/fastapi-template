@@ -16,7 +16,7 @@ async def list_users(
     repo: FromDishka[UserRepository],
     skip: int = 0,
     limit: int = 100,
-):
+) -> list[User]:
     return await repo.list(skip=skip, limit=limit)
 
 

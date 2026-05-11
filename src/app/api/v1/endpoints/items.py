@@ -26,7 +26,7 @@ async def list_items(
     repo: FromDishka[ItemRepository],
     skip: int = 0,
     limit: int = 100,
-):
+) -> list[Item]:
     return await repo.list_public(skip=skip, limit=limit)
 
 
@@ -36,7 +36,7 @@ async def list_my_items(
     repo: FromDishka[ItemRepository],
     skip: int = 0,
     limit: int = 100,
-):
+) -> list[Item]:
     return await repo.list_by_owner(current_user.id, skip=skip, limit=limit)
 
 

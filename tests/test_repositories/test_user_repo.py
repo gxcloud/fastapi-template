@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.models.user import User
 from app.repositories.user import UserRepository
-from app.core.security import hash_password
 
 
 @pytest.mark.asyncio

@@ -50,6 +50,7 @@ async def session(engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def client(db_url) -> AsyncGenerator[AsyncClient, None]:
     import os
+
     os.environ["DB_URL"] = db_url
     os.environ["SECRET_KEY"] = "test-secret-key"
 

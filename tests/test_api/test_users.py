@@ -27,7 +27,8 @@ async def test_list_users(client: AsyncClient, auth_headers: dict[str, str]) -> 
 
 @pytest.mark.asyncio
 async def test_get_user(
-    client: AsyncClient, auth_headers: dict[str, str],
+    client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     me = await client.get("/api/v1/users/me", headers=auth_headers)
     user_id = me.json()["id"]
@@ -39,7 +40,8 @@ async def test_get_user(
 
 @pytest.mark.asyncio
 async def test_get_user_not_found(
-    client: AsyncClient, auth_headers: dict[str, str],
+    client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     response = await client.get(
         "/api/v1/users/00000000-0000-0000-0000-000000000000",

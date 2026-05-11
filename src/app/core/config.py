@@ -1,4 +1,3 @@
-from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,13 +10,11 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     debug: bool = False
-    db_url: PostgresDsn = (
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/app"
-    )
+    db_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/app"
     db_echo: bool = False
     db_pool_size: int = 20
     db_max_overflow: int = 10
-    secret_key: str
+    secret_key: str = "change-me"
     access_token_expire_minutes: int = 30
     cors_origins: list[str] = ["*"]
 
