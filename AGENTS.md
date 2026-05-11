@@ -122,7 +122,11 @@ make docker-up        # docker compose up --build
 - **Type hints**: always annotate return types and parameters. No `Any` unless unavoidable.
 - **Async**: all database operations use `async`/`await`. Synchronous helpers (hash_password, JWT) are fine as pure functions.
 - **Return types on endpoints**: always annotate the return type of endpoint functions (e.g., `-> User`, `-> list[Item]`, `-> dict[str, str]`).
-- **Error handling**: services raise `HTTPException` with appropriate status codes. Never let SQLAlchemy exceptions bubble up to the API layer.
+- **Error handling**: services raise `HTTPException` with appropriate status codes. Never let SQLAlchemy exceptions bubble up to the API layer. Three global exception handlers return structured JSON errors for all HTTPException, RequestValidationError, and unhandled exceptions.
+- **Password requires uppercase, lowercase, digit**: `UserCreate.password` is validated with `field_validator` to ensure at least one of each character type.
+- **Pagination**: Use `PaginationParams` dependency (skip/limit) and `PaginatedResponse[T]` model with computed `page`, `pages`, `has_next`, `has_prev` properties.
+- **Request logging**: `RequestLoggingMiddleware` logs method, path, status, duration with a unique request ID per request. X-Request-ID header set on responses.
+- **Startup validation**: App checks DB connectivity on startup and logs a warning if unavailable.
 - **Password salting**: Each user gets a unique `password_salt` via `secrets.token_hex(16)`. The salt is prepended to the password before bcrypt hashing. OIDC users have no password or salt.
 - **OIDC**: Users can authenticate via OpenID Connect. The `/auth/oidc` endpoint accepts a provider, sub, and email. If the user exists, return them; otherwise create a new user (just-in-time provisioning).
 - **Models**: use SQLAlchemy 2.0 style (`Mapped`, `mapped_column`). All tables have UUID primary keys and timestamp columns via mixins.
@@ -154,7 +158,7 @@ make docker-up        # docker compose up --build
 
 ## Testing Notes
 
-- All 79 tests require Docker. Locally, testcontainers auto-starts Postgres. In CI, a Postgres service container is used — set `DB_URL` and `SECRET_KEY` env vars to skip testcontainers.
+- All 92 tests require Docker. Locally, testcontainers auto-starts Postgres. In CI, a Postgres service container is used — set `DB_URL` and `SECRET_KEY` env vars to skip testcontainers.
 - New domains need three test files: `test_api.py`, `test_repository.py`, `test_service.py`.
 - `asyncio_mode = "auto"` in pytest config — do NOT add `@pytest.mark.asyncio` on test functions.
 - The `engine` fixture is `autouse=True` — tables create/drop automatically for every test.

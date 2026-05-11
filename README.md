@@ -20,6 +20,11 @@ Async-first, container-first, domain-driven FastAPI template for building large-
 | **Code quality** | ruff (lint+format), mypy (strict mode), pre-commit hooks |
 | **Testing** | pytest with testcontainers for disposable PostgreSQL |
 | **CI/CD** | GitHub Actions workflow with lint + test jobs |
+| **Error handling** | Structured JSON errors for all exception types |
+| **Pagination** | Reusable `PaginationParams` + `PaginatedResponse[T]` |
+| **Request logging** | Middleware logs method/path/status/duration + X-Request-ID |
+| **Startup validation** | DB connectivity check on app launch |
+| **Password strength** | Requires uppercase, lowercase, digit |
 
 ## Stack
 
@@ -247,6 +252,7 @@ All endpoints are prefixed with `/api/v1`.
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/health` | No | Returns `{"status": "ok"}` |
+| `GET` | `/health/ready` | No | DB connectivity check → `{"status":"ok","database":"connected"}` |
 
 ### Authentication
 
@@ -425,7 +431,7 @@ tests/
 │       └── test_service.py        # Unit: item business logic (8 tests)
 ```
 
-**Total: 79 tests**
+**Total: 92 tests**
 
 ### Running tests
 
@@ -570,7 +576,7 @@ GitHub Actions runs on every push/PR to `main`:
 
 ```yaml
 lint:     ruff check + ruff format --check + mypy (strict)
-test:     pytest with coverage (Postgres service container, 79 tests)
+test:     pytest with coverage (Postgres service container, 92 tests)
 ```
 
 Test job uses a Postgres service container instead of testcontainers. The `postgres` fixture in `conftest.py` detects CI via the `CI` env var and falls back to the service container's `DB_URL`.
@@ -597,4 +603,4 @@ pre-commit run --all-files
 - **Return types**: always annotate endpoint return types (e.g., `-> User`, `-> list[Item]`)
 - **Error handling**: services raise `HTTPException` with appropriate status codes. No SQLAlchemy exceptions in the API layer
 - **Models**: SQLAlchemy 2.0 style (`Mapped`, `mapped_column`). UUID PKs + timestamp columns via mixins
-- **Schemas**: Pydantic v2 with `model_config = {"from_attributes": True}` for ORM mode. Passwords validated with `Field(min_length=8)`
+- **Schemas**: Pydantic v2 with `model_config = {"from_attributes": True}` for ORM mode. Passwords validated with `Field(min_length=8)` and must contain uppercase, lowercase, and digit characters.
