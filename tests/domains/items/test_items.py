@@ -154,11 +154,11 @@ async def test_delete_item_not_found(
 async def _second_user_headers(client: AsyncClient) -> dict[str, str]:
     await client.post(
         "/api/v1/auth/register",
-        json={"email": "other@example.com", "password": "password123"},
+        json={"email": "other@example.com", "password": "Password123"},
     )
     resp = await client.post(
         "/api/v1/auth/login",
-        json={"email": "other@example.com", "password": "password123"},
+        json={"email": "other@example.com", "password": "Password123"},
     )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

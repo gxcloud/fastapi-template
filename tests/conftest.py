@@ -101,7 +101,7 @@ async def item_service(item_repo):
 @pytest_asyncio.fixture
 async def registered_user(user_service, session: AsyncSession) -> tuple[User, str]:
     user = await user_service.create(
-        UserCreate(email="test@example.com", password="password123"),
+        UserCreate(email="test@example.com", password="Password123"),
     )
     await session.commit()
     token = create_access_token(str(user.id))
