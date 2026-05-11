@@ -13,6 +13,7 @@ This is a Python project template for large-scale FastAPI applications.
 - **Alembic** — async database migrations
 - **uv** — Python package manager (not pip, not poetry)
 - **JWT** — authentication via python-jose + bcrypt
+- **CORS** — configurable via pydantic-settings
 - **Docker** — multi-stage builds, Compose for dev/prod
 - **testcontainers** — disposable PostgreSQL for tests
 
@@ -42,8 +43,8 @@ src/app/
 │       ├── repository.py       # ItemRepository (list_by_owner, list_public)
 │       ├── service.py          # ItemService (CRUD with ownership)
 │       └── router.py           # router (/items)
-├── app.py                      # create_app() factory
-└── main.py                     # uvicorn entrypoint
+├── app.py                      # create_app() factory (CORS middleware, dishka setup)
+└── main.py                     # uvicorn entrypoint (conditional reload)
 tests/
 ├── common/test_health.py
 ├── domains/
@@ -53,7 +54,9 @@ tests/
 │   │   ├── test_repository.py  # Unit: user data access
 │   │   └── test_service.py     # Unit: user business logic
 │   └── items/
-│       └── test_items.py       # API: item CRUD
+│       ├── test_items.py       # API: item CRUD
+│       ├── test_repository.py  # Unit: item data access
+│       └── test_service.py     # Unit: item business logic
 └── conftest.py                 # testcontainers Postgres, test client, fixtures
 ```
 
@@ -61,15 +64,17 @@ tests/
 
 1. **Domain-Driven Structure** — code is organized by business domain (identity, items), not by technical layer. Each domain bundles its model, schemas, repository, service, and router.
 
-2. **Repository Pattern** — data access is abstracted behind `BaseRepository[M]`. Repositories receive an `AsyncSession` in their constructor. No raw SQL in services or endpoints.
+2. **Repository Pattern** — data access is abstracted behind `BaseRepository[M]`. Repositories receive an `AsyncSession` in their constructor. Use `save()` for both create and update (works for new and tracked entities). `list()` is ordered by `created_at desc` by default.
 
-3. **Service Layer** — business logic lives in services, not endpoints. Services raise `HTTPException` for error cases. Endpoints are thin — they call services and return results.
+3. **Service Layer** — business logic lives in services, not endpoints. Services raise `HTTPException` for error cases (409 for duplicates, 404 for not found, 403 for unauthorized). Endpoints are thin — they call services and return results.
 
 4. **dishka DI Container** — no manual dependency wiring. Define providers in `common/di.py` with scopes (`APP` for singletons, `REQUEST` for per-request). Endpoints use `FromDishka[T]` to inject dependencies. Routes must use `DishkaRoute` to enable `FromDishka` resolution.
 
-5. **Async Everything** — SQLAlchemy async engine/sessions, asyncpg driver, async endpoints, async Alembic migrations, async tests.
+5. **Security** — JWT tokens via python-jose. Password hashing via bcrypt (NOT passlib, which is incompatible with bcrypt 5.0). CORS middleware configured from settings. Active user check in `get_current_user` dependency. Item ownership enforced on update/delete.
 
-6. **Container-First** — `docker-compose.yml` defines app + postgres. Dev overrides in `docker-compose.override.yml` mount source code for hot-reload.
+6. **Async Everything** — SQLAlchemy async engine/sessions, asyncpg driver, async endpoints, async Alembic migrations, async tests.
+
+7. **Container-First** — `docker-compose.yml` defines app + postgres. Dev overrides in `docker-compose.override.yml` mount source code for hot-reload.
 
 ## Commands
 
@@ -82,14 +87,14 @@ uv sync --extra dev               # Install including dev deps
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Testing (requires Docker for testcontainers)
-uv run pytest tests/ -v           # Run all tests
+uv run pytest tests/ -v           # Run all tests (45 tests)
 uv run pytest tests/ -v --cov=src/  # With coverage
 
 # Code quality
 uv run ruff check src/ tests/     # Lint
 uv run ruff format --check src/ tests/  # Format check
 uv run ruff format src/ tests/    # Auto-format
-uv run mypy src/                  # Type check
+uv run mypy src/                  # Type check (strict mode)
 
 # Database
 uv run alembic upgrade head       # Run migrations
@@ -116,7 +121,7 @@ make docker-up        # docker compose up --build
 - **Return types on endpoints**: always annotate the return type of endpoint functions (e.g., `-> User`, `-> list[Item]`, `-> dict[str, str]`).
 - **Error handling**: services raise `HTTPException` with appropriate status codes. Never let SQLAlchemy exceptions bubble up to the API layer.
 - **Models**: use SQLAlchemy 2.0 style (`Mapped`, `mapped_column`). All tables have UUID primary keys and timestamp columns via mixins.
-- **Schemas**: use Pydantic v2 style with `model_config = {"from_attributes": True}` for ORM mode.
+- **Schemas**: use Pydantic v2 style with `model_config = {"from_attributes": True}` for ORM mode. Validate passwords with `Field(min_length=8)`.
 
 ## Dependencies
 
@@ -128,7 +133,7 @@ make docker-up        # docker compose up --build
 - `alembic` — migrations
 - `pydantic>=2.10`, `pydantic-settings>=2.7` — validation and config
 - `python-jose[cryptography]` — JWT tokens
-- `bcrypt` — password hashing (NOT passlib, which is incompatible with bcrypt 5.0)
+- `bcrypt>=4.0` — password hashing (NOT passlib, which is incompatible with bcrypt 5.0)
 - `dishka>=1.4` — DI container
 
 ### Dev
@@ -142,11 +147,13 @@ make docker-up        # docker compose up --build
 
 ## Testing Notes
 
-- All tests require Docker (testcontainers starts a real PostgreSQL container).
-- The `client` fixture creates a fresh FastAPI app with a test-specific DB URL.
-- The `engine` fixture creates/drops tables for each test.
-- Service and repository tests use lazy imports to avoid early settings singleton creation.
-- Never import `from app.app import create_app` or `from app.common.config import settings` at module level in tests — always inside fixtures.
+- All 45 tests require Docker (testcontainers starts a real PostgreSQL container).
+- `asyncio_mode = "auto"` in pytest config — do NOT add `@pytest.mark.asyncio` on test functions.
+- The `engine` fixture is `autouse=True` — tables create/drop automatically for every test.
+- The `client` fixture creates a fresh FastAPI app with a test-specific DB URL via `create_app(db_url=...)`.
+- The `auth_headers` fixture provides a valid JWT for a pre-registered test user.
+- Module-level imports from app modules in conftest.py are safe because `create_app()` overrides the DB URL.
+- New domains need three test files: `test_api.py`, `test_repository.py`, `test_service.py`.
 
 ## Git Workflow
 

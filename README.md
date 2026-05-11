@@ -8,7 +8,7 @@ Async-first, container-first FastAPI template for large-scale projects.
 - **SQLAlchemy 2.0** — async ORM with repository pattern
 - **PostgreSQL** — database via asyncpg
 - **Pydantic v2** — settings, request/response schemas
-- **dishka** — dependency injection container (no manual wiring)
+- **dishka** — DI container (auto-wiring, no manual helpers)
 - **Alembic** — async database migrations
 - **uv** — Python package manager
 - **ruff** / **mypy** — linting, formatting, type checking
@@ -41,30 +41,20 @@ src/
         model.py                # DeclarativeBase, UUIDMixin, TimestampMixin
         repository.py           # Generic BaseRepository[M]
       config.py                 # Pydantic settings from env
-      database.py               # Async SQLAlchemy engine + session factory
+      database.py               # Async SQLAlchemy engine
       di.py                     # dishka DI provider (scope-based wiring)
       health.py                 # Health check endpoint
       security.py               # JWT tokens, bcrypt hashing
     domains/
       identity/                 # Identity bounded context
-        model.py                # User ORM model
-        schemas.py              # UserCreate, UserUpdate, UserResponse
-        repository.py           # UserRepository (data access)
-        service.py              # UserService (business logic)
-        router.py               # /auth and /users endpoints
+        model.py, schemas.py, repository.py, service.py, router.py
       items/                    # Items bounded context
-        model.py                # Item ORM model
-        schemas.py              # ItemCreate, ItemUpdate, ItemResponse
-        repository.py           # ItemRepository (data access)
-        service.py              # ItemService (business logic)
-        router.py               # /items endpoints
-    app.py                      # FastAPI app factory
+        model.py, schemas.py, repository.py, service.py, router.py
+    app.py                      # FastAPI app factory (CORS, dishka)
     main.py                     # uvicorn entrypoint
 tests/
   common/                       # Infrastructure tests
-  domains/
-    identity/                   # Identity domain tests
-    items/                      # Items domain tests
+  domains/                      # Per-domain tests (API, repository, service)
   conftest.py                   # Shared fixtures
 alembic/                        # Database migrations
 docker/                         # Dockerfiles
@@ -85,8 +75,9 @@ docker/                         # Dockerfiles
 ## Architecture
 
 - **Domain-Driven** — code organized by business domain (identity, items) not technical layers
-- **App Factory** — `create_app()` enables test isolation
-- **Repository Pattern** — data access abstracted behind domain-specific repositories
-- **Service Layer** — business logic lives alongside its domain, separated from HTTP
-- **DI Container** — dishka auto-wires dependencies by scope, no manual wiring
+- **App Factory** — `create_app()` accepts optional `db_url` for test isolation
+- **Repository Pattern** — `BaseRepository.save()` for create and update, ordered by `created_at`
+- **Service Layer** — business logic with ownership enforcement (403), duplicate checks (409)
+- **DI Container** — dishka auto-wires dependencies by scope via `FromDishka[T]` + `DishkaRoute`
+- **Security** — JWT auth, bcrypt hashing, CORS middleware, active user check
 - **Container-First** — identical dev/prod environments via Docker

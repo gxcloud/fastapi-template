@@ -5,7 +5,7 @@ description: Write and run tests using testcontainers PostgreSQL in a FastAPI do
 
 ## Test Structure
 
-Tests mirror the domain-driven structure:
+Tests mirror the domain-driven structure — each domain has three test files:
 ```
 tests/
 ├── conftest.py                    # Shared fixtures (postgres, engine, client, etc.)
@@ -14,39 +14,34 @@ tests/
     ├── identity/
     │   ├── test_auth.py           # API-level auth tests (via httpx AsyncClient)
     │   ├── test_users.py          # API-level user tests (via httpx AsyncClient)
-    │   ├── test_repository.py     # Unit: data access (lazy imports!)
-    │   └── test_service.py        # Unit: business logic (lazy imports!)
+    │   ├── test_repository.py     # Unit: data access
+    │   └── test_service.py        # Unit: business logic
     └── items/
-        └── test_items.py          # API-level item CRUD tests
+        ├── test_items.py          # API-level item CRUD tests
+        ├── test_repository.py     # Unit: data access
+        └── test_service.py        # Unit: business logic + ownership
 ```
 
-## Critical: Lazy Imports in Tests
+## Key Rules
 
-NEVER import `from app.app import create_app` or `from app.common.config import settings` at module level in any test file. Always import inside fixtures or test functions:
-
-```python
-# WRONG — will use default settings, not test DB:
-from app.app import create_app
-
-# RIGHT — imports happen after fixtures set env vars:
-async def my_test(client):
-    from app.app import create_app  # OK, inside function
-```
-
-This applies to any import that could transitively import `app.common.config`.
+1. **No `@pytest.mark.asyncio`** — `asyncio_mode = "auto"` in pyproject.toml handles it.
+2. **Module-level imports are safe** — `create_app()` accepts `db_url` override, so the global `settings` singleton doesn't matter.
+3. **Always commit data fixtures** — if a fixture creates data for the API client, call `await session.commit()` so the app's session can see it.
+4. **New domains need three test files** — API (httpx), repository (SQL), service (business logic).
 
 ## Available Fixtures (from conftest.py)
 
 - `postgres` — starts a testcontainers PostgreSQL container
 - `db_url` — the asyncpg connection URL from the container
-- `engine` — creates/drops all tables (SQLAlchemy metadata)
+- `engine` — `autouse=True` — creates/drops all tables for every test
 - `session` — per-test async session (auto-rollback after test)
-- `client` — httpx AsyncClient against a fresh FastAPI app (tables created)
+- `client` — httpx AsyncClient against a fresh FastAPI app
 - `user_repo` — UserRepository with a clean session
 - `item_repo` — ItemRepository with a clean session
 - `user_service` — UserService wired with user_repo
 - `item_service` — ItemService wired with item_repo
-- `auth_token` — registers a test user and returns a JWT token
+- `registered_user` — `tuple[User, str]` — created user + JWT token (committed)
+- `auth_token` — JWT token string from `registered_user`
 - `auth_headers` — `{"Authorization": "Bearer <token>"}` dict
 
 ## Running Tests
@@ -58,18 +53,14 @@ uv run pytest tests/ -v
 # With coverage
 uv run pytest tests/ -v --cov=src/ --cov-report=term-missing
 
-# Specific file
+# Specific test file
 uv run pytest tests/domains/identity/test_auth.py -v
-
-# Quick test (no coverage)
-uv run pytest tests/ -x --no-header -q
 ```
 
 ## Writing New Tests
 
 ### API-level test (uses client fixture)
 ```python
-@pytest.mark.asyncio
 async def test_my_endpoint(client: AsyncClient) -> None:
     response = await client.get("/api/v1/items")
     assert response.status_code == 200
@@ -77,7 +68,6 @@ async def test_my_endpoint(client: AsyncClient) -> None:
 
 ### Auth-required API test
 ```python
-@pytest.mark.asyncio
 async def test_protected_endpoint(
     client: AsyncClient,
     auth_headers: dict[str, str],
@@ -86,12 +76,11 @@ async def test_protected_endpoint(
     assert response.status_code == 200
 ```
 
-### Repository test (uses session directly)
+### Repository test
 ```python
-@pytest.mark.asyncio
-async def test_repo_query(user_repo) -> None:
-    from app.common.security import hash_password  # lazy!
-    from app.domains.identity.model import User     # lazy!
+async def test_repo_query(user_repo: UserRepository) -> None:
+    from app.common.security import hash_password
+    from app.domains.identity.model import User
 
     user = User(email="test@example.com", hashed_password=hash_password("pass"))
     created = await user_repo.create(user)
@@ -100,10 +89,7 @@ async def test_repo_query(user_repo) -> None:
 
 ### Service test
 ```python
-@pytest.mark.asyncio
-async def test_business_logic(user_service) -> None:
-    from app.domains.identity.schemas import UserCreate  # lazy!
-
+async def test_business_logic(user_service: UserService) -> None:
     user = await user_service.create(
         UserCreate(email="test@example.com", password="password123"),
     )
