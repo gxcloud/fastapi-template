@@ -13,5 +13,6 @@ Makefile
 README.md
 LICENSE
 docker-compose*.yml
-Dockerfile*
+docker/Dockerfile
+docker/Dockerfile.dev
 .pre-commit-config.yaml
