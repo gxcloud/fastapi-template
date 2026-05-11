@@ -4,8 +4,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.core.config import settings
-from app.models import Base
+from app.common.base.model import Base
+from app.common.config import settings
+from app.domains.identity.model import User  # noqa: F401
+from app.domains.items.model import Item  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
