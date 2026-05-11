@@ -57,14 +57,16 @@ async def get_item(
 async def update_item(
     item_id: UUID,
     data: ItemUpdate,
+    current_user: FromDishka[User],
     svc: FromDishka[ItemService],
 ) -> Item:
-    return await svc.update(item_id, data)
+    return await svc.update(item_id, data, owner_id=current_user.id)
 
 
 @router.delete("/{item_id}", status_code=204)
 async def delete_item(
     item_id: UUID,
+    current_user: FromDishka[User],
     svc: FromDishka[ItemService],
 ) -> None:
-    await svc.delete(item_id)
+    await svc.delete(item_id, owner_id=current_user.id)

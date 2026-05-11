@@ -36,7 +36,13 @@ class UserService:
 
     async def update(self, id: UUID, data: UserUpdate) -> User:
         user = await self.get(id)
-        if data.email is not None:
+        if data.email is not None and data.email != user.email:
+            existing = await self._repo.get_by_email(data.email)
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already registered",
+                )
             user.email = data.email
         if data.password is not None:
             user.hashed_password = hash_password(data.password)

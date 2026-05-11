@@ -1,7 +1,9 @@
 from dishka import make_async_container
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.common.config import settings
 from app.common.di import AppProvider
 from app.common.health import router as health_router
 from app.domains.identity.router import auth_router, user_router
@@ -10,6 +12,14 @@ from app.domains.items.router import router as items_router
 
 def create_app(db_url: str | None = None) -> FastAPI:
     app = FastAPI(title="app", version="0.1.0")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     container = make_async_container(AppProvider(db_url=db_url))
     setup_dishka(container, app)
