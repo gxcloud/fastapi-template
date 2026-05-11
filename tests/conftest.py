@@ -1,6 +1,7 @@
 import os
 from collections.abc import AsyncGenerator
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import (
@@ -14,12 +15,16 @@ from app.common.security import create_access_token
 from app.domains.identity.model import User
 from app.domains.identity.schemas import UserCreate
 
+_CI = os.environ.get("CI")
+_DB_URL = os.environ.get("DB_URL")
+
 
 @pytest_asyncio.fixture
 async def postgres():
-    db_url = os.environ.get("DB_URL")
-    if db_url:
+    if _DB_URL:
         yield None
+    elif _CI:
+        pytest.fail("DB_URL must be set when running in CI")
     else:
         with PostgresContainer("postgres:16-alpine") as pg:
             yield pg
@@ -27,9 +32,8 @@ async def postgres():
 
 @pytest_asyncio.fixture
 async def db_url(postgres) -> str:
-    db_url = os.environ.get("DB_URL")
-    if db_url:
-        return db_url
+    if _DB_URL:
+        return _DB_URL
     return postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
