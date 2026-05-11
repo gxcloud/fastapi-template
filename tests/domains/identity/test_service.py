@@ -1,8 +1,8 @@
 import pytest
 from fastapi import HTTPException
 
-from app.schemas.user import UserCreate
-from app.services.user import UserService
+from app.domains.identity.schemas import UserCreate
+from app.domains.identity.service import UserService
 
 
 @pytest.mark.asyncio

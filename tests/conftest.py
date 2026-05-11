@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import (
 from testcontainers.postgres import PostgresContainer
 
 from app.app import create_app
-from app.models import Base
-from app.repositories.item import ItemRepository
-from app.repositories.user import UserRepository
-from app.services.item import ItemService
-from app.services.user import UserService
+from app.common.base.model import Base
+from app.domains.identity.repository import UserRepository
+from app.domains.identity.service import UserService
+from app.domains.items.repository import ItemRepository
+from app.domains.items.service import ItemService
 
 
 @pytest_asyncio.fixture(scope="session")
