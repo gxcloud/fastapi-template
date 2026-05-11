@@ -9,31 +9,31 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from testcontainers.postgres import PostgresContainer
 
 from app.common.security import create_access_token
 from app.domains.identity.model import User
 from app.domains.identity.schemas import UserCreate
 
-_CI = os.environ.get("CI")
-_DB_URL = os.environ.get("DB_URL")
-
 
 @pytest_asyncio.fixture
 async def postgres():
-    if _DB_URL:
+    db_url = os.environ.get("DB_URL")
+    if db_url:
         yield None
-    elif _CI:
-        pytest.fail("DB_URL must be set when running in CI")
+    elif os.environ.get("CI"):
+        pytest.fail("DB_URL env var must be set when running in CI")
     else:
+        from testcontainers.postgres import PostgresContainer
+
         with PostgresContainer("postgres:16-alpine") as pg:
             yield pg
 
 
 @pytest_asyncio.fixture
 async def db_url(postgres) -> str:
-    if _DB_URL:
-        return _DB_URL
+    db_url = os.environ.get("DB_URL")
+    if db_url:
+        return db_url
     return postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
