@@ -1,8 +1,10 @@
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from dishka import make_async_container
 from dishka.integrations.fastapi import setup_dishka
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,7 +24,24 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(db_url: str | None = None) -> FastAPI:
-    app = FastAPI(title="app", version="0.1.0")
+    container = make_async_container(AppProvider(db_url=db_url))
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        from app.common.startup import check_database_connection
+
+        try:
+            await check_database_connection()
+            logger.info("Database connection established")
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "Database connection failed — app started without DB. "
+                "Set DB_URL environment variable.",
+            )
+        yield
+        await container.close()
+
+    app = FastAPI(title="app", version="0.1.0", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -36,29 +55,9 @@ def create_app(db_url: str | None = None) -> FastAPI:
 
     app.add_exception_handler(Exception, unhandled_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
-    from fastapi import HTTPException
-
     app.add_exception_handler(HTTPException, http_exception_handler)  # type: ignore[arg-type]
 
-    container = make_async_container(AppProvider(db_url=db_url))
     setup_dishka(container, app)
-
-    @app.on_event("startup")
-    async def validate_startup() -> None:
-        from app.common.startup import check_database_connection
-
-        try:
-            await check_database_connection()
-            logger.info("Database connection established")
-        except Exception:  # noqa: BLE001
-            logger.warning(
-                "Database connection failed — app started without DB. "
-                "Set DB_URL environment variable.",
-            )
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        await container.close()
 
     v1_router = APIRouter(prefix="/v1")
     v1_router.include_router(health_router)
