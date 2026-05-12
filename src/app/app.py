@@ -56,6 +56,10 @@ def create_app(db_url: str | None = None) -> FastAPI:
                 "Set DB_URL environment variable.",
             )
 
+    @app.on_event("shutdown")
+    async def shutdown() -> None:
+        await container.close()
+
     v1_router = APIRouter(prefix="/v1")
     v1_router.include_router(health_router)
     v1_router.include_router(auth_router)

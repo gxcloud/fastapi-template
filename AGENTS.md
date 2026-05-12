@@ -23,18 +23,23 @@ This is a Python project template for large-scale FastAPI applications.
 src/app/
 ├── common/                     # Shared infrastructure
 │   ├── base/
+│   ├── base/
 │   │   ├── model.py            # DeclarativeBase, UUIDMixin, TimestampMixin
 │   │   └── repository.py       # Generic BaseRepository[M] (generic over model)
 │   ├── config.py               # Pydantic Settings from env vars
 │   ├── database.py              # Async engine + session factory (lazy)
 │   ├── di.py                   # dishka AppProvider (scope-based DI)
-│   ├── health.py               # Health check endpoint (no auth)
-│   └── security.py             # JWT create/decode, bcrypt hash/verify
+│   ├── exceptions.py           # Global exception handlers (HTTP, validation, unhandled)
+│   ├── health.py               # /health (liveness) and /health/ready (readiness)
+│   ├── middleware.py            # RequestLoggingMiddleware (method, path, duration, X-Request-ID)
+│   ├── pagination.py           # PaginationParams dependency + PaginatedResponse[T] model
+│   ├── security.py             # JWT create/decode, bcrypt hash/verify with per-user salt
+│   └── startup.py              # DB connectivity check on app startup
 ├── domains/
 │   ├── identity/               # Bounded context: identity
 │   │   ├── model.py            # User (id, email, hashed_password, password_salt, oidc_sub, oidc_provider, is_active, is_superuser)
 │   │   ├── schemas.py          # UserCreate, UserUpdate, UserOIDCLogin, UserResponse
-│   │   ├── repository.py       # UserRepository (find_by_email, list_by_ids)
+│   │   ├── repository.py       # UserRepository (find_by_email, get_by_oidc)
 │   │   ├── service.py          # UserService (register, authenticate, profile CRUD)
 │   │   └── router.py           # auth_router (/auth) + user_router (/users)
 │   └── items/                  # Bounded context: items
@@ -46,10 +51,16 @@ src/app/
 ├── app.py                      # create_app() factory (CORS middleware, dishka setup)
 └── main.py                     # uvicorn entrypoint (conditional reload)
 tests/
-├── common/test_health.py
+├── common/
+│   ├── test_health.py          # Liveness endpoint
+│   ├── test_health_ready.py    # Readiness endpoint (DB check)
+│   ├── test_pagination.py      # PaginatedResponse model
+│   ├── test_security.py        # JWT, bcrypt, salt
+│   ├── test_exceptions.py      # Structured error responses
+│   └── test_password_strength.py  # Password validation rules
 ├── domains/
 │   ├── identity/
-│   │   ├── test_auth.py        # API: register, login
+│   │   ├── test_auth.py        # API: register, login, OIDC
 │   │   ├── test_users.py       # API: get/me, list, get by id
 │   │   ├── test_repository.py  # Unit: user data access
 │   │   └── test_service.py     # Unit: user business logic
@@ -57,6 +68,7 @@ tests/
 │       ├── test_items.py       # API: item CRUD
 │       ├── test_repository.py  # Unit: item data access
 │       └── test_service.py     # Unit: item business logic
+├── factories.py                # Factory Boy factories for User, Item
 └── conftest.py                 # testcontainers Postgres, test client, fixtures
 ```
 
@@ -87,10 +99,10 @@ uv sync --extra dev               # Install including dev deps
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # CI (GitHub Actions automates this on push/PR)
-# See .github/workflows/ci.yml
+# See .github/workflows/quality.yml
 
 # Testing (requires Docker for testcontainers, or set DB_URL env var)
-uv run pytest tests/ -v           # Run all tests (79 tests)
+uv run pytest tests/ -v           # Run all tests (92 tests)
 uv run pytest tests/ -v --cov=src/  # With coverage
 
 # Code quality
@@ -131,8 +143,6 @@ make docker-up        # docker compose up --build
 - **OIDC**: Users can authenticate via OpenID Connect. The `/auth/oidc` endpoint accepts a provider, sub, and email. If the user exists, return them; otherwise create a new user (just-in-time provisioning).
 - **Models**: use SQLAlchemy 2.0 style (`Mapped`, `mapped_column`). All tables have UUID primary keys and timestamp columns via mixins.
 - **Schemas**: use Pydantic v2 style with `model_config = {"from_attributes": True}` for ORM mode. Validate passwords with `Field(min_length=8)`.
-- **Password salting**: Each user gets a unique `password_salt` via `secrets.token_hex(16)`. The salt is prepended to the password before bcrypt hashing. OIDC users have no password or salt.
-- **OIDC**: Users can authenticate via OpenID Connect. The `/auth/oidc` endpoint accepts a provider, sub, and email. If the user exists, return them; otherwise create a new user (just-in-time provisioning).
 
 ## Dependencies
 
